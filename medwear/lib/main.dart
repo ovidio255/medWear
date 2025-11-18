@@ -4,11 +4,18 @@ import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter_local_notifications/flutter_local_notifications.dart';
 import 'package:intl/date_symbol_data_local.dart';
+import 'package:get/get.dart';
+
 import 'firebase_options.dart';
 import 'app.dart';
 
+// imports específicos para reloj
+import 'controllers/medicamento_controller.dart';
+import 'services/wear_sync_service.dart';
+import 'pages/wear_home_page.dart';
+
 final FlutterLocalNotificationsPlugin flutterLocalNotificationsPlugin =
-    FlutterLocalNotificationsPlugin();
+FlutterLocalNotificationsPlugin();
 
 void main() {
   runZonedGuarded(() async {
@@ -17,7 +24,7 @@ void main() {
 
     // Captura global de errores de Flutter
     FlutterError.onError = (details) {
-      debugPrint('FlutterError: \\n${details.exceptionAsString()}');
+      debugPrint('FlutterError: \n${details.exceptionAsString()}');
       debugPrint(details.stack?.toString());
     };
 
@@ -41,13 +48,15 @@ void main() {
     if (!kIsWeb) {
       try {
         const AndroidInitializationSettings initializationSettingsAndroid =
-            AndroidInitializationSettings('@mipmap/ic_launcher');
-        const InitializationSettings initializationSettings = InitializationSettings(
+        AndroidInitializationSettings('@mipmap/ic_launcher');
+        const InitializationSettings initializationSettings =
+        InitializationSettings(
           android: initializationSettingsAndroid,
         );
         await flutterLocalNotificationsPlugin.initialize(
           initializationSettings,
-          onDidReceiveNotificationResponse: (NotificationResponse response) {},
+          onDidReceiveNotificationResponse:
+              (NotificationResponse response) {},
         );
         debugPrint('[ARRANQUE] Notificaciones inicializadas');
       } catch (e) {
@@ -69,6 +78,32 @@ class MedWearApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const App();
+    // Detectar tamaño de pantalla: si es muy pequeña, asumimos reloj
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        final shortestSide = constraints.biggest.shortestSide;
+        final bool isWatch = shortestSide < 300; // umbral simple
+
+        if (isWatch) {
+          // Registrar dependencias necesarias para Wear OS
+          if (!Get.isRegistered<MedicamentoController>()) {
+            Get.put(MedicamentoController(), permanent: true);
+          }
+          if (!Get.isRegistered<WearSyncService>()) {
+            Get.put(WearSyncService(), permanent: true);
+          }
+
+          // App específica del reloj
+          return GetMaterialApp(
+            debugShowCheckedModeBanner: false,
+            theme: ThemeData.dark(),
+            home: const WearHomePage(),
+          );
+        } else {
+          // App normal (móvil / tablet)
+          return const App();
+        }
+      },
+    );
   }
 }

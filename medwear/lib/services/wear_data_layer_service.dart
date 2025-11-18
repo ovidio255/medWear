@@ -3,16 +3,12 @@ import 'dart:convert';
 import 'package:get/get.dart';
 
 /// Servicio para comunicación bidireccional entre móvil y reloj Wear OS
-/// usando el patrón de Data Layer API de Google Play Services
 class WearDataLayerService extends GetxService {
-  late StreamController<WearableMessage> _messageStream;
+  // Inicialización inmediata del StreamController (ya no es late)
+  final StreamController<WearableMessage> _messageStream =
+  StreamController<WearableMessage>.broadcast();
+
   Stream<WearableMessage> get messageStream => _messageStream.stream;
-  
-  @override
-  void onInit() {
-    super.onInit();
-    _messageStream = StreamController<WearableMessage>.broadcast();
-  }
 
   /// Envía datos desde el móvil al reloj
   /// Los datos se sincronizan automáticamente cuando el reloj está conectado
@@ -23,10 +19,10 @@ class WearDataLayerService extends GetxService {
     try {
       print('📤 Enviando datos a Wear OS: $path');
       print('Datos: ${jsonEncode(data)}');
-      
+
       // Simulación: En Android nativo se usaría:
       // Wearable.getDataClient(context).putDataItem(putDataRequest)
-      
+
       // Para implementación real, usarías método channel nativo
       return true;
     } catch (e) {
@@ -43,10 +39,10 @@ class WearDataLayerService extends GetxService {
   }) async {
     try {
       print('⚡ Enviando mensaje urgente a Wear: $path');
-      
+
       // En Android nativo:
       // Wearable.getMessageClient(context).sendMessage(nodeId, path, data)
-      
+
       return true;
     } catch (e) {
       print('❌ Error enviando mensaje urgente: $e');
@@ -65,13 +61,14 @@ class WearDataLayerService extends GetxService {
   }
 
   /// Sincroniza la lista de medicamentos del día al reloj
-  Future<bool> syncMedicamentosToWear(List<Map<String, dynamic>> medicamentos) async {
+  Future<bool> syncMedicamentosToWear(
+      List<Map<String, dynamic>> medicamentos) async {
     try {
       final data = {
         'timestamp': DateTime.now().millisecondsSinceEpoch,
         'medicamentos': medicamentos,
       };
-      
+
       return await sendDataToWear(
         path: '/medicamentos/hoy',
         data: data,
@@ -97,7 +94,7 @@ class WearDataLayerService extends GetxService {
         'hora': hora.toIso8601String(),
         'timestamp': DateTime.now().millisecondsSinceEpoch,
       };
-      
+
       return await sendUrgentMessageToWear(
         path: '/recordatorio/tomar',
         data: data,
@@ -130,9 +127,8 @@ class WearableMessage {
   // Acciones comunes desde el reloj
   bool get isMedicamentoTomado => path == '/medicamento/tomado';
   bool get isMedicamentoPospuesto => path == '/medicamento/pospuesto';
-  
+
   String? get medicamentoId => data['medicamento_id'];
-  DateTime? get hora => data['hora'] != null 
-    ? DateTime.parse(data['hora']) 
-    : null;
+  DateTime? get hora =>
+      data['hora'] != null ? DateTime.parse(data['hora']) : null;
 }
